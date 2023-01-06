@@ -121,9 +121,6 @@ class GU_Upgrade {
 	 * @return void
 	 */
 	public function flush_tokens() {
-		if ( gu_fs()->can_use_premium_code() || false === wp_next_scheduled( 'gu_delete_access_tokens' ) ) {
-			return;
-		}
 
 		$base_options = [
 			'db_version',

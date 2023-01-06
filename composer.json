@@ -33,8 +33,7 @@
     "php": ">=7.2",
     "afragen/wordpress-plugin-readme-parser": "dev-master",
     "afragen/singleton": "dev-master",
-    "afragen/wp-dependency-installer": "^4",
-    "freemius/wordpress-sdk": "^2.5"
+    "afragen/wp-dependency-installer": "^4"
   },
   "autoload": {
     "psr-4": {
