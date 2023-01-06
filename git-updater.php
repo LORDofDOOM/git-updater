@@ -18,7 +18,7 @@
  * Domain Path:       /languages
  * Text Domain:       git-updater
  * Network:           true
- * GitHub Plugin URI: https://github.com/afragen/git-updater
+ * GitHub Plugin URI: https://github.com/LORDofDOOM/git-updater
  * GitHub Languages:  https://github.com/afragen/git-updater-translations
  * Requires at least: 5.2
  * Requires PHP:      7.2
