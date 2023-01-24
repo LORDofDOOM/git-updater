@@ -117,7 +117,7 @@ trait GU_Trait {
 		if ( is_wp_error( $response ) ) {
 			return false;
 		}
-		$this->response = is_array( $this->response ) ? $this->response : [];
+		$this->response = property_exists( $this, 'response' ) && is_array( $this->response ) ? $this->response : [];
 
 		$hours = $this->get_class_vars( 'API\API', 'hours' );
 		if ( ! $repo ) {
@@ -467,6 +467,7 @@ trait GU_Trait {
 	 */
 	protected function get_repo_slugs( $slug, $upgrader_object = null ) {
 		$arr    = [];
+		$slug   = (string) $slug;
 		$rename = explode( '-', $slug );
 		array_pop( $rename );
 		$rename = implode( '-', $rename );
