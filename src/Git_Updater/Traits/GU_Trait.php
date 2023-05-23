@@ -117,7 +117,7 @@ trait GU_Trait {
 		if ( is_wp_error( $response ) ) {
 			return false;
 		}
-		$this->response = is_array( $this->response ) ? $this->response : [];
+		$this->response = property_exists( $this, 'response' ) && is_array( $this->response ) ? $this->response : [];
 
 		$hours = $this->get_class_vars( 'API\API', 'hours' );
 		if ( ! $repo ) {
@@ -467,6 +467,7 @@ trait GU_Trait {
 	 */
 	protected function get_repo_slugs( $slug, $upgrader_object = null ) {
 		$arr    = [];
+		$slug   = (string) $slug;
 		$rename = explode( '-', $slug );
 		array_pop( $rename );
 		$rename = implode( '-', $rename );
@@ -599,7 +600,7 @@ trait GU_Trait {
 		$header['primary_branch'] = false;
 
 		if ( ! empty( $header['host'] ) ) {
-			if ( 'GitHub' === $header_parts[0] && false === strpos( $header['host'], 'github.com' ) ) {
+			if ( 'GitHub' === $header_parts[0] && ! str_contains( $header['host'], 'github.com' ) ) {
 				$header['enterprise_uri']  = $header['base_uri'];
 				$header['enterprise_api']  = trim( $header['enterprise_uri'], '/' );
 				$header['enterprise_api'] .= '/api/v3';
@@ -691,7 +692,7 @@ trait GU_Trait {
 	 * @return bool
 	 */
 	public function use_release_asset( $branch_switch = false ) {
-		$is_tag                  = $branch_switch && ! array_key_exists( $branch_switch, $this->type->branches );
+		$is_tag                  = property_exists( $this->type, 'branches' ) ? $branch_switch && ! array_key_exists( $branch_switch, (array) $this->type->branches ) : false;
 		$switch_master_tag       = $this->type->primary_branch === $branch_switch || $is_tag;
 		$current_master_noswitch = $this->type->primary_branch === $this->type->branch && false === $branch_switch;
 
@@ -720,12 +721,20 @@ trait GU_Trait {
 			}
 		);
 
+		if ( ! isset( $options['branch_switch'] ) ) {
+			$options['branch_switch'] = '0';
+		}
+
+		if ( ! isset( $options['bypass_background_processing'] ) ) {
+			$options['bypass_background_processing'] = '0';
+		}
+
 		// Check if filter set elsewhere.
 		$disable_wp_cron = (bool) apply_filters( 'gu_disable_wpcron', false );
 		$disable_wp_cron = $disable_wp_cron ?: (bool) apply_filters_deprecated( 'github_updater_disable_wpcron', [ false ], '10.0.0', 'gu_disable_wpcron' );
 
-		if ( ! isset( $options['bypass_background_processing'] ) && $disable_wp_cron ) {
-			$options['bypass_background_processing'] = '-1';
+		if ( $disable_wp_cron ) {
+			$options['bypass_background_processing'] = '1';
 		}
 
 		return $options;

@@ -47,7 +47,7 @@ composer require afragen/wp-dependency-installer
   },
   {
     "name": "Local Development",
-    "host": "WordPress",
+    "host": "wordpress",
     "slug": "local-development/local-development.php",
     "uri": "https://wordpress.org/plugins/local-development/",
     "required": true
@@ -61,7 +61,7 @@ You will then need to update `wp-dependencies.json` to suit your requirements.
 
 ```php
 require_once __DIR__ . '/vendor/autoload.php';
-add_action( 'plugins_loaded', function() {
+add_action( 'plugins_loaded', static function() {
   WP_Dependency_Installer::instance( __DIR__ )->run();
 });
 ```

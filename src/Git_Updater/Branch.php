@@ -41,6 +41,20 @@ class Branch {
 	protected $base;
 
 	/**
+	 * Holds rollback tag.
+	 *
+	 * @var string|bool
+	 */
+	protected $tag;
+
+	/**
+	 * Holds current repo cache.
+	 *
+	 * @var array|bool
+	 */
+	protected $cache;
+
+	/**
 	 * Constructor.
 	 */
 	public function __construct() {
@@ -300,10 +314,6 @@ class Branch {
 			'upgrade-theme_' . $theme->slug
 		);
 		$rollback_url      = sprintf( '%s%s', $nonced_update_url, '&rollback=' );
-
-		if ( ! isset( self::$options['branch_switch'] ) ) {
-			return;
-		}
 
 		ob_start();
 		if ( '1' === self::$options['branch_switch'] ) {

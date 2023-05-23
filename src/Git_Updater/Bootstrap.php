@@ -93,6 +93,7 @@ class Bootstrap {
 		require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		deactivate_plugins( [ 'git-updater-pro/git-updater-pro.php', 'git-updater-additions/git-updater-additions.php' ] );
 
+		require_once __DIR__ . '/Shim.php';
 		( new REST_API() )->load_hooks();
 		( new Additions_Bootstrap( $this->file ) )->run();
 		( new Init() )->run();
@@ -154,6 +155,13 @@ class Bootstrap {
 	 * @return void|bool
 	 */
 	public function rename_on_activation() {
+		global $wp_filesystem;
+
+		if ( ! $wp_filesystem ) {
+			require_once ABSPATH . '/wp-admin/includes/file.php';
+			WP_Filesystem();
+		}
+
 		// Exit if coming from webhook.
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		if ( isset( $_GET['plugin'], $_GET['webhook_source'] ) && 'git-updater' === $_GET['plugin'] ) {
@@ -171,7 +179,7 @@ class Bootstrap {
 		}
 
 		if ( $slug && 'git-updater/git-updater.php' !== $slug ) {
-			$result = move_dir( $plugin_dir . dirname( $slug ), $plugin_dir . 'git-updater' );
+			$result = move_dir( $plugin_dir . dirname( $slug ), $plugin_dir . 'git-updater', true );
 			if ( \is_wp_error( $result ) ) {
 				return $result;
 			}
