@@ -41,6 +41,27 @@ class Branch {
 	protected $base;
 
 	/**
+	 * Holds rollback tag.
+	 *
+	 * @var string|bool
+	 */
+	protected $tag;
+
+	/**
+	 * Holds current repo cache.
+	 *
+	 * @var array|bool
+	 */
+	protected $cache;
+
+	/**
+	 * Holds data to be stored.
+	 *
+	 * @var string[]
+	 */
+	protected $response;
+
+	/**
 	 * Constructor.
 	 */
 	public function __construct() {
@@ -147,7 +168,7 @@ class Branch {
 		$tag_array    = isset( $this->cache['tags'] ) && is_array( $this->cache['tags'] );
 		$in_tag_array = $tag_array && in_array( $rollback, $this->cache['tags'], true );
 		if ( $in_tag_array ) {
-			$current_branch = isset( $this->cache[ $repo ]['PrimaryBranch'] ) ? $this->cache[ $repo ]['PrimaryBranch'] : 'master';
+			$current_branch = $this->cache[ $repo ]['PrimaryBranch'] ?? 'master';
 		}
 
 		if ( ! $in_tag_array && isset( $_GET['action'], $this->cache['branches'] )
@@ -207,9 +228,7 @@ class Branch {
 
 		if ( ! empty( $plugin ) ) {
 			$id       = $plugin['slug'] . '-id';
-			$branches = isset( $config[ $plugin['slug'] ]->branches )
-				? $config[ $plugin['slug'] ]->branches
-				: null;
+			$branches = $config[ $plugin['slug'] ]->branches ?? null;
 		} else {
 			return false;
 		}
@@ -256,9 +275,7 @@ class Branch {
 
 		$enclosure         = $this->base->update_row_enclosure( $theme_key, 'theme', true );
 		$id                = $theme_key . '-id';
-		$branches          = isset( $config[ $theme_key ]->branches )
-			? $config[ $theme_key ]->branches
-			: null;
+		$branches          = $config[ $theme_key ]->branches ?? null;
 		$nonced_update_url = wp_nonce_url(
 			$this->base->get_update_url( 'theme', 'upgrade-theme', $theme_key ),
 			'upgrade-theme_' . $theme_key
@@ -300,10 +317,6 @@ class Branch {
 			'upgrade-theme_' . $theme->slug
 		);
 		$rollback_url      = sprintf( '%s%s', $nonced_update_url, '&rollback=' );
-
-		if ( ! isset( self::$options['branch_switch'] ) ) {
-			return;
-		}
 
 		ob_start();
 		if ( '1' === self::$options['branch_switch'] ) {
@@ -523,5 +536,4 @@ class Branch {
 
 		print '</ul>';
 	}
-
 }

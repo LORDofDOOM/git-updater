@@ -26,7 +26,9 @@ if ( ! defined( 'WPINC' ) ) {
  * Class API
  */
 class API {
-	use API_Common, GU_Trait, Basic_Auth_Loader;
+	use API_Common;
+	use GU_Trait;
+	use Basic_Auth_Loader;
 
 	/**
 	 * Holds HTTP error code from API call.
@@ -217,13 +219,13 @@ class API {
 			$this->set_repo_cache( 'error_cache', $response, md5( $url ), "+{$timeout} minutes" );
 		}
 
-		static::$error_code[ $this->type->slug ] = isset( static::$error_code[ $this->type->slug ] ) ? static::$error_code[ $this->type->slug ] : [];
+		static::$error_code[ $this->type->slug ] = static::$error_code[ $this->type->slug ] ?? [];
 		static::$error_code[ $this->type->slug ] = array_merge(
 			static::$error_code[ $this->type->slug ],
 			[
 				'repo' => $this->type->slug,
 				'code' => $code,
-				'name' => isset( $this->type->name ) ? $this->type->name : $this->type->slug,
+				'name' => $this->type->name ?? $this->type->slug,
 				'git'  => $this->type->git,
 			]
 		);
@@ -232,7 +234,7 @@ class API {
 		}
 		Singleton::get_instance( 'Messages', $this )->create_error_message( $type['git'] );
 
-		if ( $cached && defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+		if ( 'file' === self::$method && isset( $response['timeout'] ) && ! $cached && defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			$response_body = \json_decode( wp_remote_retrieve_body( $response ) );
 			if ( null !== $response_body && \property_exists( $response_body, 'message' ) ) {
 				$log_message = "Git Updater Error: {$this->type->name} ({$this->type->slug}:{$this->type->branch}) - {$response_body->message}";
@@ -295,7 +297,7 @@ class API {
 			'owner'   => $this->type->owner,
 			'repo'    => $this->type->slug,
 			'branch'  => empty( $this->type->branch ) ? $this->type->primary_branch : $this->type->branch,
-			'gist_id' => isset( $this->type->gist_id ) ? $this->type->gist_id : null,
+			'gist_id' => $this->type->gist_id ?? null,
 		];
 
 		foreach ( $segments as $segment => $value ) {
@@ -339,7 +341,7 @@ class API {
 	 * @return bool|int|mixed|string|\WP_Error
 	 */
 	protected function get_dot_org_data() {
-		$response = isset( $this->response['dot_org'] ) ? $this->response['dot_org'] : false;
+		$response = $this->response['dot_org'] ?? false;
 
 		if ( ! $response ) {
 			$url      = "https://api.wordpress.org/{$this->type->type}s/info/1.2/";
@@ -415,7 +417,7 @@ class API {
 	 * @return bool true if invalid
 	 */
 	protected function validate_response( $response ) {
-		return empty( $response ) || isset( $response->message ) || is_wp_error( $response );
+		return empty( $response ) || isset( $response->message ) || isset( $response->error ) || is_wp_error( $response );
 	}
 
 	/**
@@ -530,7 +532,7 @@ class API {
 		} else {
 			$readme['sections']['other_notes'] .= $readme['remaining_content'];
 		}
-		unset( $readme['sections']['screenshots'], $readme['sections']['installation'] );
+		unset( $readme['sections']['screenshots'] );
 		$readme['sections']   = ! empty( $readme['sections'] ) ? $readme['sections'] : [];
 		$this->type->sections = array_merge( (array) $this->type->sections, (array) $readme['sections'] );
 
@@ -545,11 +547,16 @@ class API {
 			$readme['tested'] = implode( '.', $tested_arr );
 		}
 
-		$this->type->tested       = isset( $readme['tested'] ) ? $readme['tested'] : null;
-		$this->type->requires     = isset( $readme['requires'] ) ? $readme['requires'] : null;
-		$this->type->requires_php = isset( $readme['requires_php'] ) ? $readme['requires_php'] : null;
-		$this->type->donate_link  = isset( $readme['donate_link'] ) ? $readme['donate_link'] : null;
-		$this->type->contributors = isset( $readme['contributors'] ) ? $readme['contributors'] : null;
+		$this->type->tested       = $readme['tested'] ?? '';
+		$this->type->requires     = $readme['requires'] ?? '';
+		$this->type->requires_php = $readme['requires_php'] ?? '';
+		$this->type->donate_link  = $readme['donate_link'] ?? '';
+		$this->type->contributors = $readme['contributors'] ?? [];
+		if ( empty( $readme['upgrade_notice'] ) ) {
+			unset( $readme['upgrade_notice'] );
+		} else {
+			$this->type->upgrade_notice = $readme['upgrade_notice'];
+		}
 
 		return true;
 	}
@@ -578,7 +585,7 @@ class API {
 			unset( $this->response['release_asset_redirect'] );
 		}
 
-		$response = isset( $this->response['release_asset_redirect'] ) ? $this->response['release_asset_redirect'] : false;
+		$response = $this->response['release_asset_redirect'] ?? false;
 
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended
 		if ( isset( $_REQUEST['key'] ) ) {

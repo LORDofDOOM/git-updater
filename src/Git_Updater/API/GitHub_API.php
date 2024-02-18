@@ -32,7 +32,7 @@ class GitHub_API extends API implements API_Interface {
 	 *
 	 * @param \stdClass $type plugin|theme.
 	 */
-	public function __construct( $type ) {
+	public function __construct( $type = null ) {
 		parent::__construct();
 		$this->type     = $type;
 		$this->response = $this->get_repo_cache();
@@ -205,7 +205,7 @@ class GitHub_API extends API implements API_Interface {
 			$reset = (int) $data['x-ratelimit-reset'];
 			//phpcs:ignore WordPress.DateTime.RestrictedFunctions.date_date
 			$wait                        = date( 'i', $reset - time() );
-			static::$error_code[ $repo ] = isset( static::$error_code[ $repo ] ) ? static::$error_code[ $repo ] : [];
+			static::$error_code[ $repo ] = static::$error_code[ $repo ] ?? [];
 			static::$error_code[ $repo ] = array_merge( static::$error_code[ $repo ], [ 'wait' => $wait ] );
 
 			return $wait;
@@ -464,7 +464,7 @@ class GitHub_API extends API implements API_Interface {
 	 */
 	public function remote_install( $headers, $install ) {
 		$github_com                     = true;
-		$options['github_access_token'] = isset( static::$options['github_access_token'] ) ? static::$options['github_access_token'] : null;
+		$options['github_access_token'] = static::$options['github_access_token'] ?? null;
 
 		if ( 'github.com' === $headers['host'] || empty( $headers['host'] ) ) {
 			$base            = 'https://api.github.com';

@@ -35,7 +35,7 @@ trait Basic_Auth_Loader {
 	 *
 	 * @return array $args
 	 */
-	public function download_package( $args, $url ) {
+	final public function download_package( $args, $url ) {
 		if ( null !== $args['filename'] ) {
 			$args = array_merge( $args, $this->add_auth_header( $args, $url ) );
 			$args = array_merge( $args, $this->unset_release_asset_auth( $args, $url ) );
@@ -55,7 +55,7 @@ trait Basic_Auth_Loader {
 	 *
 	 * @return array $args
 	 */
-	public function add_auth_header( $args, $url ) {
+	final public function add_auth_header( $args, $url ) {
 		$credentials = $this->get_credentials( $url );
 		if ( ! $credentials['isset'] || $credentials['api.wordpress'] ) {
 			return $args;
@@ -74,7 +74,7 @@ trait Basic_Auth_Loader {
 			 */
 			$args = apply_filters( 'gu_get_auth_header', $args, $credentials );
 		}
-		$args['headers'] = isset( $args['headers'] ) ? $args['headers'] : [];
+		$args['headers'] = $args['headers'] ?? [];
 
 		return $args;
 	}
@@ -122,7 +122,7 @@ trait Basic_Auth_Loader {
 
 			$credentials['type']       = $type;
 			$credentials['isset']      = true;
-			$credentials['token']      = isset( $token ) ? $token : null;
+			$credentials['token']      = $token ?? null;
 			$credentials['enterprise'] = ! in_array( $headers['host'], [ 'github.com', 'api.github.com' ], true );
 		}
 

@@ -86,7 +86,7 @@ class Rest_Update {
 		}
 
 		if ( ! $plugin ) {
-			throw new \UnexpectedValueException( 'Plugin not found or not updatable with Git Updater: ' . $plugin_slug );
+			throw new \UnexpectedValueException( 'Plugin not found or not updatable with Git Updater: ' . esc_html( $plugin_slug ) );
 		}
 
 		if ( is_plugin_active( $plugin->file ) ) {
@@ -116,9 +116,12 @@ class Rest_Update {
 				}
 
 				$current->response[ $plugin->file ] = (object) $update;
+				unset( $current->no_update[ $plugin->slug ] );
 
 				return $current;
-			}
+			},
+			15,
+			1
 		);
 
 		// Add authentication header to download package.
@@ -154,7 +157,7 @@ class Rest_Update {
 		}
 
 		if ( ! $theme ) {
-			throw new \UnexpectedValueException( 'Theme not found or not updatable with Git Updater: ' . $theme_slug );
+			throw new \UnexpectedValueException( 'Theme not found or not updatable with Git Updater: ' . esc_html( $theme_slug ) );
 		}
 
 		Singleton::get_instance( 'Fragen\Git_Updater\Base', $this )->get_remote_repo_meta( $theme );
@@ -179,9 +182,12 @@ class Rest_Update {
 				}
 
 				$current->response[ $theme->slug ] = $update;
+				unset( $current->no_update[ $theme->slug ] );
 
 				return $current;
-			}
+			},
+			15,
+			1
 		);
 
 		// Add authentication header to download package.
@@ -256,7 +262,7 @@ class Rest_Update {
 				$tag           = $branch;
 				$remote_branch = $branch;
 			}
-			$remote_branch  = isset( $remote_branch ) ? $remote_branch : $tag;
+			$remote_branch  = $remote_branch ?? $tag;
 			$current_branch = $override ? $remote_branch : $current_branch;
 			if ( $remote_branch !== $current_branch && ! $override ) {
 				throw new \UnexpectedValueException( 'Webhook tag and current branch are not matching. Consider using `override` query arg.' );
@@ -359,11 +365,11 @@ class Rest_Update {
 		$repo = false;
 		if ( $plugin ) {
 			$repos = Singleton::get_instance( 'Fragen\Git_Updater\Plugin', $this )->get_plugin_configs();
-			$repo  = isset( $repos[ $plugin ] ) ? $repos[ $plugin ] : false;
+			$repo  = $repos[ $plugin ] ?? false;
 		}
 		if ( $theme ) {
 			$repos = Singleton::get_instance( 'Fragen\Git_Updater\Theme', $this )->get_theme_configs();
-			$repo  = isset( $repos[ $theme ] ) ? $repos[ $theme ] : false;
+			$repo  = $repos[ $theme ] ?? false;
 		}
 		$current_branch = $repo ?
 			( new Branch() )->get_current_branch( $repo ) :
@@ -381,7 +387,7 @@ class Rest_Update {
 	 */
 	private function get_primary_branch( $slug ) {
 		$cache          = $this->get_repo_cache( $slug );
-		$primary_branch = isset( $cache[ $slug ]['PrimaryBranch'] ) ? $cache[ $slug ]['PrimaryBranch'] : 'master';
+		$primary_branch = $cache[ $slug ]['PrimaryBranch'] ?? 'master';
 
 		return $primary_branch;
 	}

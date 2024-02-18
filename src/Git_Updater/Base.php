@@ -32,7 +32,8 @@ if ( ! defined( 'WPINC' ) ) {
  */
 class Base {
 
-	use GU_Trait, Basic_Auth_Loader;
+	use GU_Trait;
+	use Basic_Auth_Loader;
 
 	/**
 	 * Variable for holding extra theme and plugin headers.
@@ -88,6 +89,20 @@ class Base {
 	protected $config;
 
 	/**
+	 * Holds plugin data.
+	 *
+	 * @var \stdClass
+	 */
+	protected $plugin;
+
+	/**
+	 * Holds theme data.
+	 *
+	 * @var \stdClass
+	 */
+	protected $theme;
+
+	/**
 	 * Constructor.
 	 */
 	public function __construct() {
@@ -138,7 +153,7 @@ class Base {
 		 */
 		$hide_settings = $hide_settings ?: (bool) apply_filters_deprecated( 'github_updater_hide_settings', [ false ], '10.0.0', 'gu_hide_settings' );
 
-		if ( ! $hide_settings && Singleton::get_instance( 'Init', $this )->can_update() ) {
+		if ( Singleton::get_instance( 'Init', $this )->can_update() ) {
 			Singleton::get_instance( 'Settings', $this )->run();
 			Singleton::get_instance( 'Add_Ons', $this )->load_hooks();
 		}
@@ -220,16 +235,20 @@ class Base {
 		 *
 		 * @since 10.0.0
 		 *
-		 * @return null|array
+		 * @return array
 		 */
-		$config = apply_filters( 'gu_set_options', null );
+		$config = apply_filters( 'gu_set_options', [] );
 
 		/**
 		 * Filter the plugin options.
 		 *
 		 * @return null|array
 		 */
-		$config = null === $config ? apply_filters_deprecated( 'github_updater_set_options', [ null ], '6.1.0', 'gu_set_options' ) : $config;
+		$config = empty( $config ) ? apply_filters_deprecated( 'github_updater_set_options', [ [] ], '6.1.0', 'gu_set_options' ) : $config;
+
+		foreach ( array_keys( self::$git_servers ) as $git ) {
+			unset( $config[ "{$git}_access_token" ], $config[ "{$git}_enterprise_token" ] );
+		}
 
 		if ( ! empty( $config ) ) {
 			$config        = $this->sanitize( $config );
@@ -345,10 +364,10 @@ class Base {
 			$language_pack->run();
 		}
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace
+		$caller = debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS, 2 )[1]['class'];
 		// Return data if being called from Git Updater REST API.
-		if ( class_exists( 'Fragen\Git_Updater\REST\REST_API' )
-			&& $this->caller instanceof \Fragen\Git_Updater\REST\REST_API
-		) {
+		if ( 'Fragen\Git_Updater\REST\REST_API' === $caller ) {
 			return $repo;
 		}
 
@@ -361,30 +380,26 @@ class Base {
 	 * @param string $type (plugin|theme).
 	 */
 	protected function set_defaults( $type ) {
-		if ( ! isset( self::$options['branch_switch'] ) ) {
-			self::$options['branch_switch'] = null;
-		}
-
 		if ( ! isset( $this->$type->slug ) ) {
 			$this->$type       = new \stdClass();
-			$this->$type->slug = null;
+			$this->$type->slug = '';
 		} elseif ( ! isset( self::$options[ $this->$type->slug ] ) ) {
-			self::$options[ $this->$type->slug ] = null;
+			self::$options[ $this->$type->slug ] = '';
 			add_site_option( 'git_updater', self::$options );
 		}
 
 		$this->$type->remote_version = '0.0.0';
 		$this->$type->newest_tag     = '0.0.0';
-		$this->$type->download_link  = null;
+		$this->$type->download_link  = '';
 		$this->$type->tags           = [];
 		$this->$type->rollback       = [];
 		$this->$type->branches       = [];
-		$this->$type->requires       = null;
-		$this->$type->tested         = null;
-		$this->$type->donate_link    = null;
+		$this->$type->requires       = '';
+		$this->$type->tested         = '';
+		$this->$type->donate_link    = '';
 		$this->$type->contributors   = [];
 		$this->$type->downloaded     = 0;
-		$this->$type->last_updated   = null;
+		$this->$type->last_updated   = '';
 		$this->$type->rating         = 0;
 		$this->$type->num_ratings    = 0;
 		$this->$type->transient      = [];
@@ -487,8 +502,8 @@ class Base {
 
 		$new_source = $this->fix_misnamed_directory( $new_source, $remote_source, $upgrader_object, $slug );
 
-		if ( $source !== $new_source ) {
-			$result = move_dir( $source, $new_source );
+		if ( trailingslashit( strtolower( $source ) ) !== trailingslashit( strtolower( $new_source ) ) ) {
+			$result = move_dir( $source, $new_source, true );
 			if ( \is_wp_error( $result ) ) {
 				return $result;
 			}
@@ -630,7 +645,7 @@ class Base {
 	 * @return string
 	 */
 	public function get_git_icon( $file, $add_padding ) {
-		$type     = false !== strpos( current_filter(), 'plugin' ) ? 'plugin' : 'theme';
+		$type     = str_contains( current_filter(), 'plugin' ) ? 'plugin' : 'theme';
 		$type_cap = ucfirst( $type );
 		$filepath = 'plugin' === $type ? WP_PLUGIN_DIR . "/$file" : get_theme_root() . "/$file/style.css";
 
@@ -684,7 +699,8 @@ class Base {
 				$githost = str_replace( "{$type_cap}URI", '', $key );
 				$padding = is_rtl() ? 'padding-left: 6px;' : 'padding-right: 6px;';
 				$icon    = sprintf(
-					'<img src="%1$s" style="vertical-align:text-bottom;%2$s" height="16" width="16" alt="%3$s" />',
+					'<img title="%1$s" src="%2$s" style="vertical-align:text-bottom;%3$s" height="16" width="16" alt="%4$s" />',
+					__( 'Updates via Git Updater', 'git-updater' ),
 					plugins_url( $git['icons'][ strtolower( $githost ) ] ),
 					$add_padding ? $padding : '',
 					$githost
@@ -693,6 +709,6 @@ class Base {
 			}
 		}
 
-		return isset( $icon ) ? $icon : null;
+		return $icon ?? null;
 	}
 }

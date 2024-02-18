@@ -29,7 +29,8 @@ if ( ! defined( 'WPINC' ) ) {
  * Install <author>/<repo> directly from Git Updater.
  */
 class Install {
-	use GU_Trait, Basic_Auth_Loader;
+	use GU_Trait;
+	use Basic_Auth_Loader;
 
 	/**
 	 * Class options.
@@ -181,7 +182,7 @@ class Install {
 			 * Check for GitHub Self-Hosted.
 			 */
 			if ( 'github' === self::$install['git_updater_api'] ) {
-				self::$install = Singleton::get_instance( 'Fragen\Git_Updater\API\GitHub_API', $this, new \stdClass() )->remote_install( $headers, self::$install );
+				self::$install = Singleton::get_instance( 'Fragen\Git_Updater\API\GitHub_API', $this )->remote_install( $headers, self::$install );
 			}
 
 			/**
@@ -236,11 +237,11 @@ class Install {
 		}
 
 		$headers = $this->parse_header_uri( $config['uri'] );
-		$api     = false !== strpos( $headers['host'], '.com' )
+		$api     = str_contains( $headers['host'], '.com' )
 			? rtrim( $headers['host'], '.com' )
 			: rtrim( $headers['host'], '.org' );
 
-		$api = isset( $config['git'] ) ? $config['git'] : $api;
+		$api = $config['git'] ?? $api;
 
 		$_POST['git_updater_repo']      = $config['uri'];
 		$_POST['git_updater_branch']    = $config['branch'];

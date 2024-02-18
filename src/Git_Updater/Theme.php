@@ -188,9 +188,7 @@ class Theme {
 				unset( self::$options[ $current_branch ] );
 				update_site_option( 'git_updater', self::$options );
 			}
-			$branch = isset( self::$options[ $current_branch ] )
-				? self::$options[ $current_branch ]
-				: $header['primary_branch'];
+			$branch = self::$options[ $current_branch ] ?? $header['primary_branch'];
 
 			$git_theme['type']                    = 'theme';
 			$git_theme['git']                     = $repo_parts['git_server'];
@@ -241,10 +239,10 @@ class Theme {
 		 */
 		$config = apply_filters( 'gu_config_pre_process', $this->config );
 
-		foreach ( (array) $config as $theme ) {
-			$disable_wp_cron = (bool) apply_filters( 'gu_disable_wpcron', false );
-			$disable_wp_cron = $disable_wp_cron ?: (bool) apply_filters_deprecated( 'github_updater_disable_wpcron', [ false ], '10.0.0', 'gu_disable_wpcron' );
+		$disable_wp_cron = (bool) apply_filters( 'gu_disable_wpcron', false );
+		$disable_wp_cron = $disable_wp_cron ?: (bool) apply_filters_deprecated( 'github_updater_disable_wpcron', [ false ], '10.0.0', 'gu_disable_wpcron' );
 
+		foreach ( (array) $config as $theme ) {
 			if ( ! $this->waiting_for_background_update( $theme ) || static::is_wp_cli() || $disable_wp_cron
 			) {
 				$this->base->get_remote_repo_meta( $theme );
@@ -265,9 +263,6 @@ class Theme {
 		}
 
 		$schedule_event = defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ? is_main_site() : true;
-
-		$disable_wp_cron = (bool) apply_filters( 'gu_disable_wpcron', false );
-		$disable_wp_cron = $disable_wp_cron ?: (bool) apply_filters_deprecated( 'github_updater_disable_wpcron', [ false ], '10.0.0', 'gu_disable_wpcron' );
 
 		if ( $schedule_event && ! empty( $themes ) ) {
 			if ( ! $disable_wp_cron && ! $this->is_cron_event_scheduled( 'gu_get_remote_theme' ) ) {
@@ -294,27 +289,27 @@ class Theme {
 	/**
 	 * Put changelog in themes_api, return WP.org data as appropriate.
 	 *
-	 * @param bool      $false    Default false.
+	 * @param bool      $result   Default false.
 	 * @param string    $action   The type of information being requested from the Theme Installation API.
 	 * @param \stdClass $response Theme API arguments.
 	 *
 	 * @return mixed
 	 */
-	public function themes_api( $false, $action, $response ) {
+	public function themes_api( $result, $action, $response ) {
 		if ( ! ( 'theme_information' === $action ) ) {
-			return $false;
+			return $result;
 		}
 
-		$theme = isset( $this->config[ $response->slug ] ) ? $this->config[ $response->slug ] : false;
+		$theme = $this->config[ $response->slug ] ?? false;
 
 		// Skip if waiting for background update.
 		if ( $this->waiting_for_background_update( $theme ) ) {
-			return $false;
+			return $result;
 		}
 
 		// wp.org theme.
 		if ( ! $theme || ( isset( $theme->dot_org ) && $theme->dot_org ) ) {
-			return $false;
+			return $result;
 		}
 
 		$response->slug         = $theme->slug;
@@ -590,12 +585,13 @@ class Theme {
 			];
 			if ( property_exists( $theme, 'remote_version' ) && $theme->remote_version ) {
 				$response_api_checked = [
-					'new_version'  => $theme->remote_version,
-					'package'      => $theme->download_link,
-					'tested'       => $theme->tested,
-					'requires'     => $theme->requires,
-					'requires_php' => $theme->requires_php,
-					'branches'     => array_keys( $theme->branches ),
+					'new_version'    => $theme->remote_version,
+					'package'        => $theme->download_link,
+					'tested'         => $theme->tested,
+					'requires'       => $theme->requires,
+					'requires_php'   => $theme->requires_php,
+					'branches'       => array_keys( $theme->branches ),
+					'upgrade_notice' => isset( $theme->upgrade_notice ) ? implode( ' ', $theme->upgrade_notice ) : null,
 				];
 				$response             = array_merge( $response, $response_api_checked );
 			}

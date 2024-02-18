@@ -97,7 +97,10 @@ class Settings {
 	 * Load relevant action/filter hooks.
 	 */
 	protected function load_hooks() {
-		add_action( is_multisite() ? 'network_admin_menu' : 'admin_menu', [ $this, 'add_plugin_page' ] );
+		if ( ! (bool) apply_filters( 'gu_hide_settings', false ) ) {
+			add_action( is_multisite() ? 'network_admin_menu' : 'admin_menu', [ $this, 'add_plugin_page' ] );
+		}
+
 		add_action( 'network_admin_edit_git-updater', [ $this, 'update_settings' ] );
 
 		add_filter(
@@ -121,7 +124,7 @@ class Settings {
 			);
 		}
 
-		if ( isset( self::$options['bypass_background_processing'] ) ) {
+		if ( ! empty( self::$options['bypass_background_processing'] ) ) {
 			add_filter( 'gu_disable_wpcron', '__return_true' );
 		}
 
@@ -172,7 +175,6 @@ class Settings {
 	private function settings_sub_tabs() {
 		$subtabs    = [ 'git_updater' => esc_html__( 'Git Updater', 'git-updater' ) ];
 		$gits       = $this->get_running_git_servers();
-		$gits       = array_merge( [ 'authentication' ], $gits );
 		$git_subtab = [];
 		$gu_subtabs = [];
 
@@ -217,20 +219,20 @@ class Settings {
 	 */
 	private function load_api_subtabs() {
 		$show_tabs = [ 'github' => 'GitHub' ];
-		foreach ( array_keys( static::$git_hosts )as $git ) {
+		foreach ( array_keys( static::$git_hosts ) as $git ) {
 			if ( is_plugin_active( "git-updater-{$git}/git-updater-{$git}.php" ) ) {
 				$show_tabs[ $git ] = static::$git_hosts[ $git ];
 			}
 		}
 		add_filter(
 			'gu_running_git_servers',
-			function( $gits ) use ( &$show_tabs ) {
+			static function ( $gits ) use ( &$show_tabs ) {
 				return array_merge( $gits, array_flip( $show_tabs ) );
 			}
 		);
 		add_filter(
 			'gu_add_settings_subtabs',
-			function( $subtabs ) use ( &$show_tabs ) {
+			static function ( $subtabs ) use ( &$show_tabs ) {
 
 				return array_merge( $subtabs, $show_tabs );
 			}
@@ -685,7 +687,7 @@ class Settings {
 	 * @param array $args Callback args.
 	 */
 	public function token_callback_checkbox( $args ) {
-		$checked = isset( self::$options[ $args['id'] ] ) ? self::$options[ $args['id'] ] : null;
+		$checked = self::$options[ $args['id'] ] ?? null;
 		?>
 		<label for="<?php echo esc_attr( $args['id'] ); ?>">
 			<input type="checkbox" id="<?php echo esc_attr( $args['id'] ); ?>" name="git_updater[<?php echo esc_attr( $args['id'] ); ?>]" value="1" <?php checked( 1, intval( $checked ), true ); ?> <?php disabled( '-1', $checked, true ); ?> >
@@ -908,13 +910,13 @@ class Settings {
 				return [
 					'type'    => $e->type,
 					'slug'    => $e->slug,
-					'file'    => isset( $e->file ) ? $e->file : $e->slug,
+					'file'    => $e->file ?? $e->slug,
 					'branch'  => $e->branch,
 					'name'    => $e->name,
-					'private' => isset( $e->is_private ) ? $e->is_private : false,
+					'private' => $e->is_private ?? false,
 					'broken'  => ! isset( $e->remote_version ) || '0.0.0' === $e->remote_version,
-					'dot_org' => isset( $e->dot_org ) ? $e->dot_org : false,
-					'dismiss' => isset( $e->dismiss ) ? $e->dismiss : false,
+					'dot_org' => $e->dot_org ?? false,
+					'dismiss' => $e->dismiss ?? false,
 				];
 			},
 			$type_repos
@@ -926,7 +928,7 @@ class Settings {
 		$dismiss = '&nbsp;<span title="' . $dismiss_title . '" class="dashicons dashicons-dismiss"></span></span>';
 		printf( '<h2>' . esc_html__( 'Installed Plugins and Themes', 'git-updater' ) . '</h2>' );
 		foreach ( $display_data as $data ) {
-			$dashicon     = false !== strpos( $data['type'], 'theme' )
+			$dashicon     = str_contains( $data['type'], 'theme' )
 			? '<span class="dashicons dashicons-admin-appearance"></span>&nbsp;&nbsp;'
 			: '<span class="dashicons dashicons-admin-plugins"></span>&nbsp;&nbsp;';
 			$is_private   = $data['private'] ? $lock : null;

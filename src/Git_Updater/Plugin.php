@@ -172,9 +172,7 @@ class Plugin {
 				unset( self::$options[ $current_branch ] );
 				update_site_option( 'git_updater', self::$options );
 			}
-			$branch = isset( self::$options[ $current_branch ] )
-				? self::$options[ $current_branch ]
-				: $header['primary_branch'];
+			$branch = self::$options[ $current_branch ] ?? $header['primary_branch'];
 
 			$git_plugin['type']                    = 'plugin';
 			$git_plugin['git']                     = $repo_parts['git_server'];
@@ -280,10 +278,10 @@ class Plugin {
 		 */
 		$config = apply_filters( 'gu_config_pre_process', $this->config );
 
-		foreach ( (array) $config as $plugin ) {
-			$disable_wp_cron = (bool) apply_filters( 'gu_disable_wpcron', false );
-			$disable_wp_cron = $disable_wp_cron ?: (bool) apply_filters_deprecated( 'github_updater_disable_wpcron', [ false ], '10.0.0', 'gu_disable_wpcron' );
+		$disable_wp_cron = (bool) apply_filters( 'gu_disable_wpcron', false );
+		$disable_wp_cron = $disable_wp_cron ?: (bool) apply_filters_deprecated( 'github_updater_disable_wpcron', [ false ], '10.0.0', 'gu_disable_wpcron' );
 
+		foreach ( (array) $config as $plugin ) {
 			if ( ! $this->waiting_for_background_update( $plugin ) || static::is_wp_cli() || $disable_wp_cron ) {
 				$this->base->get_remote_repo_meta( $plugin );
 			} else {
@@ -299,9 +297,6 @@ class Plugin {
 		}
 
 		$schedule_event = defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ? is_main_site() : true;
-
-		$disable_wp_cron = (bool) apply_filters( 'gu_disable_wpcron', false );
-		$disable_wp_cron = $disable_wp_cron ?: (bool) apply_filters_deprecated( 'github_updater_disable_wpcron', [ false ], '10.0.0', 'gu_disable_wpcron' );
 
 		if ( $schedule_event && ! empty( $plugins ) ) {
 			if ( ! $disable_wp_cron && ! $this->is_cron_event_scheduled( 'gu_get_remote_plugin' ) ) {
@@ -325,28 +320,28 @@ class Plugin {
 	/**
 	 * Put changelog in plugins_api, return WP.org data as appropriate
 	 *
-	 * @param bool      $false    Default false.
+	 * @param bool      $result   Default false.
 	 * @param string    $action   The type of information being requested from the Plugin Installation API.
 	 * @param \stdClass $response Plugin API arguments.
 	 *
 	 * @return mixed
 	 */
-	public function plugins_api( $false, $action, $response ) {
+	public function plugins_api( $result, $action, $response ) {
 		if ( ! ( 'plugin_information' === $action ) ) {
-			return $false;
+			return $result;
 		}
 
 		$plugin = isset( $response->slug, $this->config[ $response->slug ] ) ? $this->config[ $response->slug ] : false;
-		$false  = $this->set_no_api_check_readme_changes( $false, $plugin );
+		$result = $this->set_no_api_check_readme_changes( $result, $plugin );
 
 		// Skip if waiting for background update.
 		if ( $this->waiting_for_background_update( $plugin ) ) {
-			return $false;
+			return $result;
 		}
 
 		// wp.org plugin.
 		if ( ! $plugin || ( ( isset( $plugin->dot_org ) && $plugin->dot_org ) && $plugin->primary_branch === $plugin->branch ) ) {
-			return $false;
+			return $result;
 		}
 
 		$response->slug        = $plugin->slug;
@@ -412,12 +407,13 @@ class Plugin {
 				];
 				if ( property_exists( $plugin, 'remote_version' ) && $plugin->remote_version ) {
 					$response_api_checked = [
-						'new_version'  => $plugin->remote_version,
-						'package'      => $plugin->download_link,
-						'tested'       => $plugin->tested,
-						'requires'     => $plugin->requires,
-						'requires_php' => $plugin->requires_php,
-						'branches'     => array_keys( $plugin->branches ),
+						'new_version'    => $plugin->remote_version,
+						'package'        => $plugin->download_link,
+						'tested'         => $plugin->tested,
+						'requires'       => $plugin->requires,
+						'requires_php'   => $plugin->requires_php,
+						'branches'       => array_keys( $plugin->branches ),
+						'upgrade_notice' => isset( $plugin->upgrade_notice ) ? implode( ' ', $plugin->upgrade_notice ) : null,
 					];
 					$response             = array_merge( $response, $response_api_checked );
 				}
